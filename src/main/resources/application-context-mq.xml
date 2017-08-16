@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit" xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.6.xsd">
+
+  <rabbit:annotation-driven/>
+  <rabbit:connection-factory id="rabbitConnectionFactory" addresses="${rabbitMQ.addresses}" username="${rabbitMQ.username}" password="${rabbitMQ.password}" virtual-host="${rabbitMQ.vhost}" />
+
+  <rabbit:template id="amqpTemplate"  connection-factory="rabbitConnectionFactory"></rabbit:template>
+
+  <!--定义并发的消费者为8个 因为最大数据库连接池为40 4个通道 4*8=32 < 40-->
+  <bean id="rabbitListenerContainerFactory" class="org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory">
+    <property name="connectionFactory" ref="rabbitConnectionFactory"/>
+    <property name="concurrentConsumers" value="${rabbitMQ.concurrentConsumers.trans}"/>
+    <property name="prefetchCount" value="300"/>
+    <property name="acknowledgeMode" value="MANUAL"/>
+  </bean>
+
+  <!--定义异步通知的消息对了接收 -->
+  <bean id="notifyRabbitListenerContainerFactory" class="org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory">
+    <property name="connectionFactory" ref="rabbitConnectionFactory"/>
+    <property name="concurrentConsumers" value="${rabbitMQ.concurrentConsumers.notify}"/>
+    <property name="prefetchCount" value="1000"/>
+    <property name="acknowledgeMode" value="MANUAL"/>
+  </bean>
+  
+    <!--定义错误消息的队列接收 -->
+  <bean id="errorListenerContainerFactory" class="org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory">
+    <property name="connectionFactory" ref="rabbitConnectionFactory"/>
+    <property name="concurrentConsumers" value="1"/>
+    <property name="prefetchCount" value="300"/>
+    <property name="acknowledgeMode" value="MANUAL"/>
+  </bean>
+</beans>
